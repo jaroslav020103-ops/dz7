@@ -1,43 +1,74 @@
 import asyncio
 import os
-from dotenv import load_dotenv
-from aiogram import Bot, Dispatcher
+
+from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from dotenv import load_dotenv
 
 load_dotenv()
-bot = Bot(token=os.getenv("BOT_TOKEN"))
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-CAFE_MENU = {
-    "pizza": "🍕 Піца «Маргарита»",
-    "burger": "🍔 Бургер «Шеф»",
-    "salad": "🥗 Салат «Цезар»",
-    "drink": "🥤 Лимонад Класичний"
+menu_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="🍕 Піца"),
+            KeyboardButton(text="🍔 Бургер"),
+        ],
+        [
+            KeyboardButton(text="🥗 Салат"),
+            KeyboardButton(text="🥤 Напій"),
+        ],
+    ],
+    resize_keyboard=True
+)
+
+items = {
+    "🍕 Піца": {
+        "price": "180 грн",
+        "description": "Тісто, сир моцарела, томатний соус, салямі"
+    },
+    "🍔 Бургер": {
+        "price": "150 грн",
+        "description": "Булочка, яловича котлета, сир, салат, соус"
+    },
+    "🥗 Салат": {
+        "price": "120 грн",
+        "description": "Овочі, курка, зелень, соус"
+    },
+    "🥤 Напій": {
+        "price": "50 грн",
+        "description": "Газований або холодний напій"
+    }
 }
 
-def get_inline_menu():
-    builder = InlineKeyboardBuilder()
-    builder.button(text="🍕 Піца", callback_data="pizza")
-    builder.button(text="🍔 Бургер", callback_data="burger")
-    builder.button(text="🥗 Салат", callback_data="salad")
-    builder.button(text="🥤 Напій", callback_data="drink")
-    builder.adjust(2)
-    return builder.as_markup()
 
 @dp.message(Command("start"))
-async def cmd_start(message: Message):
-    await message.answer("Оберіть категорію з меню нижче:", reply_markup=get_inline_menu())
+async def start_handler(message: Message):
+    await message.answer(
+        "Привіт! Обери один пункт з меню:",
+        reply_markup=menu_keyboard
+    )
 
-@dp.callback_query()
-async def process_menu_click(callback: CallbackQuery):
-    if callback.data in CAFE_MENU:
-        await callback.message.answer(CAFE_MENU[callback.data])
-    await callback.answer()
+
+@dp.message(F.text.in_(items.keys()))
+async def item_handler(message: Message):
+    item = items[message.text]
+
+    await message.answer(
+        f"{message.text}\n\n"
+        f"Ціна: {item['price']}\n"
+        f"Опис: {item['description']}"
+    )
+
 
 async def main():
     await dp.start_polling(bot)
 
-if __name__ == "__main__":
+
+if __name__ == "main":
     asyncio.run(main())
